@@ -30,19 +30,21 @@ function sendText(res, status, message, headers = {}) {
 }
 
 function getCode(req){
-    const path = new URL(req.url, 'http://localhost');
-    const match = /^\/(\d{3})$/.exec(path);
+    const { pathname } = new URL(req.url, 'http://localhost');
+    const match = /^\/(\d{3})$/.exec(pathname);
+    console.log(`Received request for path: ${pathname}, matched code: ${match ? match[1] : 'none'}`);
     return match ? match[1] : null;
 }
 
 function handeRequest(req, res) {
     const code = getCode(req);
     if (!code) {
-        sendError(res, 400, 'Невірний запит');
+        sendText(res, 400, 'Невірний запит');
         return;
     }
     else if (code === '200') {
         sendText(res, 200, 'OK');
+        return;
     }
 }
 
@@ -52,12 +54,11 @@ function Server(){
       handeRequest(req, res);
     } catch (err) {
       console.error(err);
-      sendError(res, 500, 'Внутрішня помилка сервера');
+      sendText(res, 500, 'Внутрішня помилка сервера');
     }});
 
-    server.listen(port, options.host, () => {
-    console.log(`Server running at http://${options.host}:${port}/`);
-    });
+    server.listen(port, options.host);
+    console.log(`Сервер запущено на http://${options.host}:${port}`);
   }
 
 Server();
