@@ -21,12 +21,35 @@ console.error('Помилка: порт має бути цілим числом 
 process.exit(1);
 }
  
+function sendText(res, status, message, headers = {}) {
+  res.writeHead(status, {
+    'Content-Type': 'text/plain; charset=utf-8',
+    ...headers,
+  });
+  res.end(message);
+}
 
+function getCode(req){
+    const path = new URL(req.url, 'http://localhost');
+    const match = /^\/(\d{3})$/.exec(path);
+    return match ? match[1] : null;
+}
+
+function handeRequest(req, res) {
+    const code = getCode(req);
+    if (!code) {
+        sendError(res, 400, 'Невірний запит');
+        return;
+    }
+    else if (code === '200') {
+        sendText(res, 200, 'OK');
+    }
+}
 
 function Server(){
     const server = http.createServer((req, res) => {
     try {
-      Answer(req, res);
+      handeRequest(req, res);
     } catch (err) {
       console.error(err);
       sendError(res, 500, 'Внутрішня помилка сервера');
@@ -37,3 +60,4 @@ function Server(){
     });
   }
 
+Server();
