@@ -50,6 +50,14 @@ async function fetchFromHttpCat(code) {
   }
 }
 
+async function readBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 async function saveToCache(file, code, data) {
   const tmp = `${file}.${code}.tmp`;
   try {
@@ -86,6 +94,16 @@ async function handleGet(res, file, code) {
   res.end(data);
 }
 
+async function handlePut(req, res, file) {
+  const body = await readBody(req);
+  if (body.length === 0) {
+    return sendText(res, 400, 'Тіло запиту порожнє: очікується картинка');
+  }
+  const code = getCode(req);
+  await saveToCache(file, code, body);
+  sendText(res, 201, 'Картинку збережено в кеші');
+}
+
 async function handeRequest(req, res) {
     const code = getCode(req);
     if (!code) {
@@ -93,9 +111,14 @@ async function handeRequest(req, res) {
         return;
     }
     else{
-        if(req.method === 'GET') {
-          console.log(`Handling GET request for code: ${code}`);
-          return await handleGet(res, `${options.cache}/${code}.jpg`, code);
+      const path = `${options.cache}/${code}.jpg`;
+      switch (req.method) {
+          case 'GET':
+              return await handleGet(res, path, code);
+          case 'PUT':
+              return await handlePut(req, res, path);
+          default:
+              sendText(res, 405, 'Метод не дозволений');
         }
     }
     return;
