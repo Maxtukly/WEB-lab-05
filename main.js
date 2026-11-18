@@ -104,6 +104,18 @@ async function handlePut(req, res, file) {
   sendText(res, 201, 'Картинку збережено в кеші');
 }
 
+async function handleDelete(res, file, code) {
+  try {
+    await fs.unlink(file);
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return sendText(res, 404, `У кеші немає картинки для коду ${code}`);
+    }
+    throw err;
+  }
+  sendText(res, 200, 'Картинку видалено з кешу');
+}
+
 async function handeRequest(req, res) {
     const code = getCode(req);
     if (!code) {
@@ -117,6 +129,8 @@ async function handeRequest(req, res) {
               return await handleGet(res, path, code);
           case 'PUT':
               return await handlePut(req, res, path);
+          case 'DELETE':
+              return await handleDelete(res, path, code);
           default:
               sendText(res, 405, 'Метод не дозволений');
         }
