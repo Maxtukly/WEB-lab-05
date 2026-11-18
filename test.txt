@@ -1,0 +1,7 @@
+curl http://localhost:8080/404
+curl http://localhost:8080/405 --output result.jpg
+curl http://localhost:8080/809
+curl http://localhost:8080/8099
+curl -i -X PUT http://localhost:8080/303 --data-binary @Image.jpg
+curl http://localhost:8080/303
+curl -X DELETE http://localhost:8080/303
