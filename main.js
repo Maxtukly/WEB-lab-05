@@ -1,4 +1,5 @@
 import {program} from 'commander';
+import superagent from 'superagent';
 import http from 'http';
 import fs from 'fs/promises';
 
@@ -36,16 +37,68 @@ function getCode(req){
     return match ? match[1] : null;
 }
 
-function handeRequest(req, res) {
+async function fetchFromHttpCat(code) {
+  try {
+    const response = await superagent
+      .get(`https://http.cat/${code}`)
+      .buffer(true)
+      .parse(superagent.parse.image);
+    return response.body;
+  } catch (err) {
+    console.error(`Помилка при отриманні картинки для коду ${code}:`, err.message);
+    return null;
+  }
+}
+
+async function saveToCache(file, code, data) {
+  const tmp = `${file}.${code}.tmp`;
+  try {
+    await fs.writeFile(tmp, data);
+    await fs.rename(tmp, file);
+  } catch (err) {
+    await fs.rm(tmp, { force: true });
+    throw err;
+  }
+}
+
+async function handleGet(res, file, code) {
+  let data;
+  let source;
+
+  try {
+    data = await fs.readFile(file);
+    source = 'cache';
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
+    data = await fetchFromHttpCat(code);
+    if (!data) {
+      return sendText(res, 404, `Картинку для коду ${code} не знайдено`);
+    }
+    await saveToCache(file, code, data);
+    source = 'http.cat';
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'image/jpeg',
+    'Content-Length': data.length,
+    'X-Image-Source': source,
+  });
+  res.end(data);
+}
+
+async function handeRequest(req, res) {
     const code = getCode(req);
     if (!code) {
         sendText(res, 400, 'Невірний запит');
         return;
     }
-    else if (code === '200') {
-        sendText(res, 200, 'OK');
-        return;
+    else{
+        if(req.method === 'GET') {
+          console.log(`Handling GET request for code: ${code}`);
+          return await handleGet(res, `${options.cache}/${code}.jpg`, code);
+        }
     }
+    return;
 }
 
 function Server(){
